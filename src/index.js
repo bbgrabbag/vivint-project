@@ -132,10 +132,7 @@ class App extends Component {
 
               <ResponsiveContainer width="100%" height={300}>
                 {this.state.loading ?
-                  <SyncLoader
-                    sizeUnit={"px"}
-                    size={15}
-                    color='#FF6347' />
+                  <div>...Loading</div>
                   :
                   <LineChart data={this.state.stocks}>
                     <XAxis dataKey="name" />
