@@ -20,9 +20,12 @@ import {
   Grid,
   Row,
   Col,
+  Alert
 } from 'react-bootstrap';
 
 import './styles.css';
+
+import { stocksUrl, parseStockData, genHexColor } from './utils/';
 
 // example data
 const exampleStocks = [
@@ -40,36 +43,61 @@ class App extends Component {
     super();
 
     this.handleChange = this.handleChange.bind(this);
+    this.handleSubmit = this.handleSubmit.bind(this);
+    this._handleStockData = this._handleStockData.bind(this);
+    this._validate = this._validate.bind(this);
+    this.timeout = null;
 
     this.state = {
       stocks: exampleStocks,
-      inputValue: 'AMZN,FB',
+      inputValue: 'AMZN,FB,GOOGL',
+      apiErrMsg: null
     };
   }
 
-  componentDidMount() {
-    // const today = await axios(
-    //   'https://api.iextrading.com/1.0/stock/aapl/quote'
-    // );
-    // console.log(today);
-    // const threeMonths = await axios(
-    //   'https://api.iextrading.com/1.0/stock/aapl/chart/3m'
-    // );
-    // console.log(threeMonths);
+  async componentDidMount() {
+    this.handleSubmit();
   }
 
+  _validate() {
+    const { inputValue } = this.state;
+    if (!this.state.inputValue.match(/^(([a-zA-Z]+,)*[a-zA-Z]+)$/)) return false
+    if (inputValue.length > 0 && inputValue.length < 10) return false
+    return true;
+  }
+  _handleStockData(data) {
+    this.setState({ apiErrMsg: null, stocks: parseStockData(data) })
+  }
   getValidationState() {
-    const length = this.state.inputValue.length;
-    if (length > 10) return 'success';
-    else if (length > 0) return 'error';
-    return null;
+    return this._validate() ? 'success' : 'error';
   }
-
+  async fetchStockData(stockSymbols) {
+    const rawData = {}
+    await Promise.all(stockSymbols.map(async stockSymbol => {
+      const stockResponse = await axios.get(stocksUrl(stockSymbol));
+      rawData[stockSymbol.toUpperCase()] = stockResponse.data
+    }))
+    return rawData;
+  }
+  handleSubmit() {
+    const stockSymbols = this.state.inputValue.toLowerCase().split(',')
+    this.fetchStockData(stockSymbols)
+      .then(data => this._handleStockData(data))
+      .catch(err => {
+        this.setState({ apiErrMsg: err.message })
+      })
+  }
   handleChange(e) {
-    this.setState({ inputValue: e.currentTarget.value });
+    clearTimeout(this.timeout);
+    this.setState({ inputValue: e.currentTarget.value }, () => {
+      if (this._validate()) this.timeout = setTimeout(this.handleSubmit, 1000)
+    })
   }
 
   render() {
+    const lineComponents = this.state.inputValue.split(',').map(symbol => {
+      return <Line type='monotone' dataKey={symbol.toUpperCase()} stroke={genHexColor()} />
+    })
     return (
       <Grid fluid>
         <div className="App">
@@ -92,10 +120,18 @@ class App extends Component {
                   onChange={this.handleChange}
                 />
                 <FormControl.Feedback />
+
               </FormGroup>
             </Col>
           </Row>
-
+          <Row>
+            <Col md={12}>
+              {this.state.apiErrMsg &&
+                <Alert variant='danger'>
+                  {this.state.apiErrMsg}
+                </Alert>}
+            </Col>
+          </Row>
           <Row>
             <Col md={12}>
               <h2>Last 3 Months</h2>
@@ -107,9 +143,7 @@ class App extends Component {
                   <CartesianGrid strokeDasharray="3 3" />
                   <Tooltip />
                   <Legend />
-                  <Line type="monotone" dataKey="AAPL" stroke="#8884d8" />
-                  <Line type="monotone" dataKey="MSFT" stroke="#82ca9d" />
-                  <Line type="monotone" dataKey="GOOGL" stroke="#ffc658" />
+                  {lineComponents}
                 </LineChart>
               </ResponsiveContainer>
             </Col>
