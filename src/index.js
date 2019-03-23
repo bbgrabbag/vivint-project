@@ -3,6 +3,10 @@ import React, { Component } from 'react';
 import ReactDOM from 'react-dom';
 
 import {
+  SyncLoader
+} from 'react-spinners';
+
+import {
   CartesianGrid,
   Legend,
   Line,
@@ -20,23 +24,12 @@ import {
   Grid,
   Row,
   Col,
-  Alert
+  Alert,
 } from 'react-bootstrap';
 
 import './styles.css';
 
 import { stocksUrl, parseStockData, genHexColor } from './utils/';
-
-// example data
-const exampleStocks = [
-  { name: '2018-10-01', AAPL: 4000, MSFT: 2400, GOOGL: 2400 },
-  { name: '2018-10-02', AAPL: 3000, MSFT: 1398, GOOGL: 2210 },
-  { name: '2018-10-03', AAPL: 2000, MSFT: 9800, GOOGL: 2290 },
-  { name: '2018-10-04', AAPL: 2780, MSFT: 3908, GOOGL: 2000 },
-  { name: '2018-10-05', AAPL: 1890, MSFT: 4800, GOOGL: 2181 },
-  { name: '2018-10-06', AAPL: 2390, MSFT: 3800, GOOGL: 2500 },
-  { name: '2018-10-07', AAPL: 3490, MSFT: 4300, GOOGL: 2100 },
-];
 
 class App extends Component {
   constructor() {
@@ -49,9 +42,11 @@ class App extends Component {
     this.timeout = null;
 
     this.state = {
-      stocks: exampleStocks,
+      stocks: [],
       inputValue: 'AMZN,FB,GOOGL',
-      apiErrMsg: null
+      symbols: ['AMZN', 'FB', 'GOOGL'],
+      apiErrMsg: null,
+      loading: true
     };
   }
 
@@ -66,7 +61,7 @@ class App extends Component {
     return true;
   }
   _handleStockData(data) {
-    this.setState({ apiErrMsg: null, stocks: parseStockData(data) })
+    this.setState({ apiErrMsg: null, stocks: parseStockData(data), loading: false })
   }
   getValidationState() {
     return this._validate() ? 'success' : 'error';
@@ -80,23 +75,22 @@ class App extends Component {
     return rawData;
   }
   handleSubmit() {
-    const stockSymbols = this.state.inputValue.toLowerCase().split(',')
-    this.fetchStockData(stockSymbols)
+    this.setState({ loading: true }, () => this.fetchStockData(this.state.symbols)
       .then(data => this._handleStockData(data))
       .catch(err => {
-        this.setState({ apiErrMsg: err.message })
-      })
+        this.setState({ apiErrMsg: err.message, loading: false })
+      }))
   }
   handleChange(e) {
     clearTimeout(this.timeout);
-    this.setState({ inputValue: e.currentTarget.value }, () => {
+    this.setState({ inputValue: e.currentTarget.value, symbols: Array.from(new Set(e.currentTarget.value.toLowerCase().split(','))) }, () => {
       if (this._validate()) this.timeout = setTimeout(this.handleSubmit, 1000)
     })
   }
 
   render() {
-    const lineComponents = this.state.inputValue.split(',').map(symbol => {
-      return <Line type='monotone' dataKey={symbol.toUpperCase()} stroke={genHexColor()} />
+    const lineComponents = this.state.symbols.map((symbol, i) => {
+      return <Line key={i} type='monotone' dataKey={symbol.toUpperCase()} stroke={genHexColor()} />
     })
     return (
       <Grid fluid>
@@ -137,14 +131,20 @@ class App extends Component {
               <h2>Last 3 Months</h2>
 
               <ResponsiveContainer width="100%" height={300}>
-                <LineChart data={this.state.stocks}>
-                  <XAxis dataKey="name" />
-                  <YAxis />
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <Tooltip />
-                  <Legend />
-                  {lineComponents}
-                </LineChart>
+                {this.state.loading ?
+                  <SyncLoader
+                    sizeUnit={"px"}
+                    size={15}
+                    color='#FF6347' />
+                  :
+                  <LineChart data={this.state.stocks}>
+                    <XAxis dataKey="name" />
+                    <YAxis />
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <Tooltip />
+                    <Legend />
+                    {lineComponents}
+                  </LineChart>}
               </ResponsiveContainer>
             </Col>
           </Row>
