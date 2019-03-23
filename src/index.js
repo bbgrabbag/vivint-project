@@ -3,10 +3,6 @@ import React, { Component } from 'react';
 import ReactDOM from 'react-dom';
 
 import {
-  SyncLoader
-} from 'react-spinners';
-
-import {
   CartesianGrid,
   Legend,
   Line,
@@ -132,10 +128,7 @@ class App extends Component {
 
               <ResponsiveContainer width="100%" height={300}>
                 {this.state.loading ?
-                  <SyncLoader
-                    sizeUnit={"px"}
-                    size={15}
-                    color='#FF6347' />
+                  <div>...Loading</div>
                   :
                   <LineChart data={this.state.stocks}>
                     <XAxis dataKey="name" />
