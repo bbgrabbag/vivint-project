@@ -1,5 +1,5 @@
 export const stocksUrl = symbol => `https://api.iextrading.com/1.0/stock/${symbol}/chart/3m`
-export const genHexColor = () => '#' + Math.floor(Math.random() * 16777215).toString(16);
+export const genHexColor = () => '#' + (Math.random().toString(16) + '000000').slice(2, 8)
 export const parseStockData = data => {
   const output = [];
   for (let key in data) {
